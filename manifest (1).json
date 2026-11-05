@@ -1,0 +1,14 @@
+{
+  "background_color": "#ffffff",
+  "description": "Temple Parikrama and Pradakshina round counter with GPS tracking",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "PARIKRAMA",
+  "orientation": "portrait",
+  "scope": "//PARIKRAMA1/",
+  "short_name": "PARIKRAMA",
+  "start_url": "/PARIKRAMA1/",
+  "theme_color": "#ffffff",
+  "id": "PARIKRAMA",
+  "lang": "en"
+}
