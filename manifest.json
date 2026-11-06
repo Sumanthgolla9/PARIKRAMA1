@@ -1,14 +1,25 @@
 {
-  "background_color": "#ffffff",
+  "name": "Parikrama Counter",
+  "short_name": "Parikrama",
   "description": "Temple Parikrama and Pradakshina round counter with GPS tracking",
-  "dir": "ltr",
-  "display": "standalone",
-  "name": "PARIKRAMA",
-  "orientation": "portrait",
-  "scope": "//PARIKRAMA1/",
-  "short_name": "PARIKRAMA",
   "start_url": "/PARIKRAMA1/",
-  "theme_color": "#ffffff",
-  "id": "PARIKRAMA",
-  "lang": "en"
+  "scope": "/PARIKRAMA1/",
+  "display": "standalone",
+  "background_color": "#120e0b",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/192/3655/3655581.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3655/3655581.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
