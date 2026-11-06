@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Parikrama Pulse - Sacred Temple Counter</title>
+  
+  <!-- PWA Manifest & Meta Tags -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Parikrama">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+    .pulse-glow {
+      animation: pulse-subtle 4s ease-in-out infinite;
+    }
+    .touch-target {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    .circular-progress {
+      transition: stroke-dashoffset 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    body {
+      background-color: #120e0b;
+      color: #fef3c7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden touch-target">
+
+  <!-- Top Navigation / Header -->
+  <header class="w-full max-w-md mx-auto pt-4 px-4 pb-2 flex items-center justify-between border-b border-amber-900/30">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wider text-amber-300 uppercase">Parikrama</h1>
+        <p id="headerShrineText" class="text-xs text-amber-500/80 truncate max-w-[150px]">Dwajasthambham</p>
+      </div>
+    </div>
+
+    <!-- Quick Action Controls -->
+    <div class="flex items-center space-x-2">
+      <!-- Screen Wake Lock Toggle -->
+      <button id="wakeLockBtn" onclick="toggleWakeLock()" class="px-2.5 py-1 rounded-full text-xs font-medium border border-amber-500/30 bg-amber-950/40 text-amber-400 flex items-center space-x-1">
+        <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+        </svg>
+        <span id="wakeLockStatusText">Awake: Off</span>
+      </button>
+
+      <!-- Audio Bell Toggle -->
+      <button id="soundToggleBtn" onclick="toggleSound()" class="p-1.5 rounded-full border border-amber-500/30 bg-amber-950/40 text-amber-400">
+        <svg id="soundIconOn" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+        </svg>
+        <svg id="soundIconOff" class="w-4 h-4 hidden text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Banner for GPS Errors or Hints -->
+  <div id="gpsAlertBanner" class="w-full max-w-md mx-auto px-4 pt-2 hidden">
+    <div class="bg-amber-900/50 border border-amber-600/40 rounded-lg p-2.5 flex items-center justify-between text-xs text-amber-200">
+      <div class="flex items-center space-x-2">
+        <svg class="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+        </svg>
+        <span id="gpsAlertText">GPS signal calibrating...</span>
+      </div>
+      <button onclick="retryGps()" class="underline text-amber-300 font-semibold pl-2">Retry</button>
+    </div>
+  </div>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="w-full max-w-md mx-auto flex-1 flex flex-col justify-center px-4 py-3">
+
+    <!-- TAB 1: COUNTER VIEW -->
+    <div id="counterTabView" class="flex flex-col items-center">
+      
+      <!-- Target Presets Pill Bar -->
+      <div class="w-full flex items-center justify-between gap-1 overflow-x-auto py-2 mb-2 no-scrollbar">
+        <button onclick="setTargetRounds(3)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">3</button>
+        <button onclick="setTargetRounds(7)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">7</button>
+        <button onclick="setTargetRounds(9)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">9</button>
+        <button onclick="setTargetRounds(11)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">11</button>
+        <button onclick="setTargetRounds(21)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">21</button>
+        <button onclick="setTargetRounds(108)" class="target-chip px-3 py-1 rounded-full text-xs font-semibold bg-amber-900/30 border border-amber-600/30 text-amber-300 hover:bg-amber-800/40">108</button>
+        <button onclick="openCustomTargetModal()" class="px-2.5 py-1 rounded-full text-xs font-medium border border-amber-500/40 bg-amber-600/20 text-amber-200">Custom</button>
+      </div>
+
+      <!-- Live Timing & Pace Strip -->
+      <div class="w-full flex justify-between items-center px-4 py-2 bg-stone-900/60 rounded-xl border border-amber-900/30 mb-4 text-xs">
+        <div>
+          <span class="text-stone-400 block text-[10px] uppercase tracking-wider">Duration</span>
+          <span id="sessionTimerText" class="font-mono text-amber-300 font-bold text-sm">00:00:00</span>
+        </div>
+        <div class="text-center">
+          <span class="text-stone-400 block text-[10px] uppercase tracking-wider">Last Round</span>
+          <span id="lastLapPaceText" class="font-mono text-amber-400 font-semibold">--:--</span>
+        </div>
+        <div class="text-right">
+          <span class="text-stone-400 block text-[10px] uppercase tracking-wider">GPS Gate</span>
+          <span id="headerGateBadge" class="inline-flex items-center text-[11px] font-semibold text-amber-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1 animate-pulse"></span>
+            Idle
+          </span>
+        </div>
+      </div>
+
+      <!-- Circular Mandala Touch Counter Stage -->
+      <div class="relative w-72 h-72 my-2 flex items-center justify-center">
+        <!-- SVG Progress Ring -->
+        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 260 260">
+          <circle cx="130" cy="130" r="110" stroke="#292019" stroke-width="12" fill="none" />
+          <circle id="progressRing" cx="130" cy="130" r="110" stroke="#f59e0b" stroke-width="12" stroke-linecap="round" fill="none" stroke-dasharray="691.15" stroke-dashoffset="691.15" class="circular-progress" />
+        </svg>
+
+        <!-- Main Focal Round Tap Zone -->
+        <button id="tapRoundZone" onclick="registerManualRoundTap()" class="absolute inset-4 rounded-full bg-gradient-to-br from-amber-950/80 via-stone-900 to-black border-2 border-amber-600/40 flex flex-col items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.15)] active:scale-95 transition-transform duration-75">
+          <span class="text-[11px] uppercase tracking-widest text-amber-500/80 font-bold mb-1">Pradakshina</span>
+          <span id="roundCounterNumber" class="text-7xl font-extrabold text-amber-300 tracking-tighter">0</span>
+          <div class="flex items-center space-x-1 mt-1 text-xs text-amber-400/90 font-medium">
+            <span>of</span>
+            <span id="targetRoundsDisplay" class="font-bold">7</span>
+            <span>Rounds</span>
+          </div>
+          <span class="text-[10px] text-stone-500 mt-2">Tap here or walk auto-gate</span>
+        </button>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center justify-center gap-4 mt-4 w-full">
+        <button onclick="decrementRound()" class="flex-1 max-w-[90px] py-2 rounded-xl bg-stone-900 border border-stone-800 text-stone-400 text-xs font-semibold hover:text-amber-300 active:scale-95">
+          -1 Undo
+        </button>
+        <button id="quickSetGateBtn" onclick="setGpsGate()" class="flex-1 py-2 px-3 rounded-xl bg-amber-600/20 border border-amber-500/40 text-amber-300 text-xs font-bold hover:bg-amber-600/30 active:scale-95 flex items-center justify-center space-x-1">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span id="quickGateBtnText">Set Gate</span>
+        </button>
+        <button onclick="resetCurrentParikrama()" class="flex-1 max-w-[90px] py-2 rounded-xl bg-stone-900 border border-stone-800 text-stone-400 text-xs font-semibold hover:text-red-400 active:scale-95">
+          Reset
+        </button>
+      </div>
+
+      <!-- Save Session Button -->
+      <div class="w-full mt-3">
+        <button onclick="saveParikramaSession()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 text-amber-950 font-bold text-xs uppercase tracking-wider shadow-lg shadow-amber-900/30 hover:brightness-110 active:scale-[0.98]">
+          Complete & Save Session
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 2: GPS GATE DETAILS & RADAR -->
+    <div id="gpsTabView" class="hidden flex-col items-center">
+      <div class="w-full bg-stone-900/70 border border-amber-900/40 rounded-2xl p-4 mb-4">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-sm font-bold text-amber-300 uppercase tracking-wide">Auto-GPS Virtual Gate</h2>
+          <span id="gpsStatusPill" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 border border-amber-600/40 text-amber-400">Searching...</span>
+        </div>
+        <p class="text-xs text-stone-400 leading-relaxed mb-4">
+          Stand at your starting spot (Dwajasthambham or Sanctum) and tap <b>"Set Spot as Gate"</b>. As you circumambulate and return, the app rings the bell and increments rounds automatically.
+        </p>
+
+        <!-- Distance Radar Display -->
+        <div class="relative w-44 h-44 mx-auto my-2 rounded-full border border-amber-500/30 bg-black/60 flex flex-col items-center justify-center">
+          <div class="absolute inset-4 rounded-full border border-amber-500/20"></div>
+          <div class="absolute inset-10 rounded-full border border-amber-500/10"></div>
+          
+          <span class="text-[10px] text-stone-400 uppercase">Distance to Gate</span>
+          <span id="distanceMeterText" class="text-3xl font-extrabold text-amber-300 font-mono">-- m</span>
+          <span id="gateStateText" class="text-[10px] mt-1 text-amber-500 font-semibold uppercase">No Gate Set</span>
+        </div>
+
+        <!-- Coordinates & Accuracy Details -->
+        <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-black/40 p-3 rounded-xl border border-stone-800 my-3">
+          <div>
+            <span class="text-stone-500 block">GPS Accuracy:</span>
+            <span id="accuracyValText" class="text-stone-300">--</span>
+          </div>
+          <div>
+            <span class="text-stone-500 block">Current Coords:</span>
+            <span id="coordsValText" class="text-stone-300 truncate block">Waiting for fix...</span>
+          </div>
+        </div>
+
+        <!-- Gate Action Buttons -->
+        <div class="flex gap-2">
+          <button onclick="setGpsGate()" class="flex-1 py-2.5 rounded-xl bg-amber-600 text-stone-950 font-bold text-xs hover:bg-amber-500 active:scale-95">
+            Set Current Spot as Gate
+          </button>
+          <button onclick="clearGpsGate()" class="px-4 py-2.5 rounded-xl bg-stone-800 text-stone-300 font-medium text-xs hover:bg-stone-700">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Gate Sensitivity Sliders -->
+      <div class="w-full bg-stone-900/70 border border-stone-800 rounded-2xl p-4 mb-4 text-xs space-y-3">
+        <h3 class="font-bold text-stone-300 text-xs">Sensitivity Calibration</h3>
+        <div>
+          <div class="flex justify-between text-stone-400 mb-1">
+            <span>Trigger Radius (Close to Gate):</span>
+            <span id="triggerRadiusVal" class="font-mono text-amber-300">7 m</span>
+          </div>
+          <input type="range" id="triggerRadiusInput" min="3" max="15" value="7" class="w-full accent-amber-500">
+        </div>
+        <div>
+          <div class="flex justify-between text-stone-400 mb-1">
+            <span>Arming Distance (Walk away):</span>
+            <span id="armDistanceVal" class="font-mono text-amber-300">14 m</span>
+          </div>
+          <input type="range" id="armDistanceInput" min="8" max="30" value="14" class="w-full accent-amber-500">
+        </div>
+
+        <!-- Simulation Tool for Indoor Testing -->
+        <div class="pt-2 border-t border-stone-800 flex items-center justify-between">
+          <span class="text-stone-400">Indoor Desktop Demo:</span>
+          <button onclick="simulateOneRound()" class="px-3 py-1 rounded bg-stone-800 text-amber-300 border border-amber-600/30 text-xs font-semibold hover:bg-stone-700">
+            Simulate 1 Round
+          </button>
+        </div>
+      </div>
+
+      <!-- Indoor Sanctuary Step Backup -->
+      <div class="w-full bg-stone-900/70 border border-stone-800 rounded-2xl p-4 text-xs space-y-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <h4 class="font-bold text-stone-300">Indoor Sanctuary Backup</h4>
+            <p class="text-[11px] text-stone-500">Use accelerometer steps if temple roof blocks GPS</p>
+          </div>
+          <button id="pedometerToggleBtn" onclick="togglePedometer()" class="px-3 py-1 rounded-full text-xs font-bold border border-stone-700 bg-stone-800 text-stone-300">
+            Enable
+          </button>
+        </div>
+        <div id="pedometerDetails" class="hidden pt-2 flex justify-between text-amber-300 font-mono text-xs">
+          <span>Current Steps: <b id="currentStepCount">0</b></span>
+          <span>Target / Round: <b>85</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: JOURNAL & HISTORY -->
+    <div id="historyTabView" class="hidden flex-col">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-sm font-bold text-amber-300 uppercase tracking-wide">Pradakshina Journal</h2>
+        <button onclick="exportHistoryCsv()" class="text-xs text-amber-400 underline font-semibold">Export CSV</button>
+      </div>
+
+      <!-- Daily Streak Card -->
+      <div class="bg-gradient-to-r from-amber-950/70 to-stone-900 border border-amber-900/40 rounded-xl p-3 mb-3 flex items-center justify-between">
+        <div>
+          <span class="text-stone-400 text-[10px] uppercase tracking-wider block">Daily Discipline</span>
+          <span id="streakCountText" class="text-xl font-bold text-amber-300">1 Day Streak</span>
+        </div>
+        <div class="text-right">
+          <span class="text-stone-400 text-[10px] uppercase tracking-wider block">Total Rounds</span>
+          <span id="totalLifetimeRounds" class="text-xl font-bold text-amber-400">0</span>
+        </div>
+      </div>
+
+      <!-- Session Log List -->
+      <div id="historyListContainer" class="space-y-2 overflow-y-auto max-h-[360px] pr-1">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="w-full max-w-md mx-auto bg-stone-950/90 border-t border-amber-900/30 px-6 py-2 flex justify-around items-center">
+    <button onclick="switchTab('counter')" id="tabBtnCounter" class="flex flex-col items-center text-amber-400">
+      <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span class="text-[10px] font-bold">Counter</span>
+    </button>
+    <button onclick="switchTab('gps')" id="tabBtnGps" class="flex flex-col items-center text-stone-500 hover:text-amber-300">
+      <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+      <span class="text-[10px] font-bold">GPS Gate</span>
+    </button>
+    <button onclick="switchTab('history')" id="tabBtnHistory" class="flex flex-col items-center text-stone-500 hover:text-amber-300">
+      <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <span class="text-[10px] font-bold">Journal</span>
+    </button>
+  </nav>
+
+  <!-- Custom Target & Shrine Modal -->
+  <div id="customModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-amber-600/40 rounded-2xl w-full max-w-xs p-5 shadow-2xl">
+      <h3 class="text-sm font-bold text-amber-300 uppercase tracking-wider mb-3">Custom Parikrama</h3>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-stone-400 block mb-1">Shrine / Temple Name</label>
+          <input id="inputShrineName" type="text" placeholder="e.g. Shiva Temple" class="w-full bg-black/60 border border-stone-700 rounded-lg p-2 text-stone-200">
+        </div>
+        <div>
+          <label class="text-stone-400 block mb-1">Target Rounds</label>
+          <input id="inputTargetRounds" type="number" min="1" max="1008" value="7" class="w-full bg-black/60 border border-stone-700 rounded-lg p-2 text-stone-200">
+        </div>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button onclick="closeCustomTargetModal()" class="flex-1 py-2 rounded-lg bg-stone-800 text-stone-300 text-xs font-semibold">Cancel</button>
+        <button onclick="saveCustomTarget()" class="flex-1 py-2 rounded-lg bg-amber-600 text-stone-950 text-xs font-bold">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION SCRIPT LOGIC -->
+  <script>
+    // --- Application State ---
+    const state = {
+      rounds: 0,
+      target: 7,
+      shrine: "Dwajasthambham",
+      soundEnabled: true,
+      wakeLock: null,
+      startTime: null,
+      timerInterval: null,
+      lapStartTime: null,
+      lastLapDuration: null,
+      
+      // GPS Finite State Machine
+      gpsWatchId: null,
+      currentCoords: null,
+      gateCoords: null, // { lat, lon }
+      gateState: "NO_GATE", // "NO_GATE", "AT_GATE", "ARMED", "COOLDOWN"
+      triggerRadius: 7, // meters
+      armDistance: 14, // meters
+      lastRoundTimestamp: 0,
+
+      // Indoor Pedometer
+      pedometerActive: false,
+      stepCount: 0,
+      stepsPerRound: 85,
+      lastStepTime: 0,
+
+      history: []
+    };
+
+    const TOTAL_RING_CIRCUMFERENCE = 2 * Math.PI * 110; // ~691.15
+
+    // --- Web Audio Synthesizer (Bronze Temple Bell) ---
+    let audioCtx = null;
+    function playTempleBell(isMajorChime = false) {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const freqs = isMajorChime ? [440, 880, 1320, 1760] : [528, 1056, 1584];
+
+        freqs.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+
+          osc.type = idx === 0 ? "sine" : "triangle";
+          osc.frequency.setValueAtTime(freq, now);
+
+          const decay = isMajorChime ? 3.5 : 2.0;
+          gain.gain.setValueAtTime(0.25 / (idx + 1), now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(now);
+          osc.stop(now + decay);
+        });
+      } catch (err) {
+        console.warn("Audio bell warning:", err);
+      }
+    }
+
+    function triggerHaptic(type = "short") {
+      if ("vibrate" in navigator) {
+        if (type === "major") {
+          navigator.vibrate([120, 80, 120, 80, 250]);
+        } else {
+          navigator.vibrate(80);
+        }
+      }
+    }
+
+    // --- Core Round Actions ---
+    function completeOneRound() {
+      if (!state.startTime) {
+        startWalkTimer();
+      }
+
+      state.rounds += 1;
+      
+      // Calculate split time
+      if (state.lapStartTime) {
+        state.lastLapDuration = Math.floor((Date.now() - state.lapStartTime) / 1000);
+      }
+      state.lapStartTime = Date.now();
+
+      // Check if target is achieved
+      const isTargetMet = state.rounds === state.target;
+      if (isTargetMet) {
+        playTempleBell(true);
+        triggerHaptic("major");
+        if (typeof confetti === "function") {
+          confetti({ particleCount: 75, spread: 70, origin: { y: 0.6 } });
+        }
+      } else {
+        playTempleBell(false);
+        triggerHaptic("short");
+      }
+
+      renderUI();
+    }
+
+    function registerManualRoundTap() {
+      completeOneRound();
+    }
+
+    function decrementRound() {
+      if (state.rounds > 0) {
+        state.rounds -= 1;
+        renderUI();
+      }
+    }
+
+    function resetCurrentParikrama() {
+      if (confirm("Reset current parikrama round counter?")) {
+        state.rounds = 0;
+        state.startTime = null;
+        state.lapStartTime = null;
+        state.lastLapDuration = null;
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+        document.getElementById("sessionTimerText").innerText = "00:00:00";
+        document.getElementById("lastLapPaceText").innerText = "--:--";
+        renderUI();
+      }
+    }
+
+    function setTargetRounds(val) {
+      state.target = parseInt(val, 10);
+      renderUI();
+    }
+
+    // --- Screen Wake-Lock API ---
+    async function toggleWakeLock() {
+      const statusText = document.getElementById("wakeLockStatusText");
+      if (!state.wakeLock) {
+        try {
+          if ('wakeLock' in navigator) {
+            state.wakeLock = await navigator.wakeLock.request('screen');
+            state.wakeLock.addEventListener('release', () => {
+              state.wakeLock = null;
+              statusText.innerText = "Awake: Off";
+            });
+            statusText.innerText = "Awake: On";
+          } else {
+            alert("Screen Wake Lock API not supported on this browser.");
+          }
+        } catch (err) {
+          console.warn("Wake lock failed:", err);
+          statusText.innerText = "Awake: Off";
+        }
+      } else {
+        await state.wakeLock.release();
+        state.wakeLock = null;
+        statusText.innerText = "Awake: Off";
+      }
+    }
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      document.getElementById("soundIconOn").classList.toggle("hidden", !state.soundEnabled);
+      document.getElementById("soundIconOff").classList.toggle("hidden", state.soundEnabled);
+    }
+
+    // --- GPS Geofence & Calculation Engine ---
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth radius in meters
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c; // distance in meters
+    }
+
+    function initGpsTracking() {
+      if (!("geolocation" in navigator)) {
+        showGpsBanner("GPS not supported on this device.");
+        return;
+      }
+
+      state.gpsWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          hideGpsBanner();
+          state.currentCoords = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy)
+          };
+          updateGpsStatusUI();
+          evaluateGpsGatePosition();
+        },
+        (err) => {
+          console.warn("GPS error:", err);
+          showGpsBanner("GPS fix unavailable. Enable high-accuracy location.");
+        },
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+      );
+    }
+
+    function setGpsGate() {
+      if (!state.currentCoords) {
+        // Fallback demo coordinates if testing indoors
+        state.currentCoords = { lat: 17.3850, lon: 78.4867, accuracy: 5 };
+      }
+
+      state.gateCoords = { ...state.currentCoords };
+      state.gateState = "AT_GATE";
+      document.getElementById("quickGateBtnText").innerText = "Gate Active";
+      renderUI();
+      alert("Starting Gate set at current GPS location!");
+    }
+
+    function clearGpsGate() {
+      state.gateCoords = null;
+      state.gateState = "NO_GATE";
+      document.getElementById("quickGateBtnText").innerText = "Set Gate";
+      renderUI();
+    }
+
+    function evaluateGpsGatePosition() {
+      if (!state.gateCoords || !state.currentCoords) return;
+
+      const dist = calculateDistance(
+        state.currentCoords.lat,
+        state.currentCoords.lon,
+        state.gateCoords.lat,
+        state.gateCoords.lon
+      );
+
+      document.getElementById("distanceMeterText").innerText = Math.round(dist) + " m";
+
+      const now = Date.now();
+      // Anti-bounce cooldown (minimum 15 seconds per lap)
+      if (now - state.lastRoundTimestamp < 15000) return;
+
+      if (state.gateState === "AT_GATE") {
+        if (dist > state.armDistance) {
+          state.gateState = "ARMED";
+          document.getElementById("gateStateText").innerText = "Gate Armed (Walking)";
+        }
+      } else if (state.gateState === "ARMED") {
+        if (dist <= state.triggerRadius) {
+          // LAP COMPLETED!
+          state.gateState = "AT_GATE";
+          state.lastRoundTimestamp = now;
+          completeOneRound();
+          document.getElementById("gateStateText").innerText = "Auto-Lap Detected!";
+        }
+      }
+    }
+
+    function simulateOneRound() {
+      state.gateState = "ARMED";
+      document.getElementById("gateStateText").innerText = "Simulating Walk...";
+      document.getElementById("distanceMeterText").innerText = "18 m";
+
+      setTimeout(() => {
+        document.getElementById("distanceMeterText").innerText = "4 m";
+        state.gateState = "AT_GATE";
+        completeOneRound();
+        document.getElementById("gateStateText").innerText = "Lap Detected (Simulated)";
+      }, 1500);
+    }
+
+    function showGpsBanner(msg) {
+      document.getElementById("gpsAlertText").innerText = msg;
+      document.getElementById("gpsAlertBanner").classList.remove("hidden");
+    }
+
+    function hideGpsBanner() {
+      document.getElementById("gpsAlertBanner").classList.add("hidden");
+    }
+
+    function retryGps() {
+      if (state.gpsWatchId) navigator.geolocation.clearWatch(state.gpsWatchId);
+      initGpsTracking();
+    }
+
+    // --- Indoor Sanctuary Accelerometer Backup ---
+    function togglePedometer() {
+      state.pedometerActive = !state.pedometerActive;
+      const btn = document.getElementById("pedometerToggleBtn");
+      const details = document.getElementById("pedometerDetails");
+
+      if (state.pedometerActive) {
+        btn.innerText = "Disable";
+        btn.classList.add("bg-amber-600", "text-black");
+        details.classList.remove("hidden");
+
+        if (window.DeviceMotionEvent) {
+          window.addEventListener("devicemotion", handleMotion);
+        } else {
+          alert("Motion sensor not available on this device.");
+        }
+      } else {
+        btn.innerText = "Enable";
+        btn.classList.remove("bg-amber-600", "text-black");
+        details.classList.add("hidden");
+        window.removeEventListener("devicemotion", handleMotion);
+      }
+    }
+
+    function handleMotion(e) {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+      const now = Date.now();
+
+      // Peak threshold for walking stride
+      if (magnitude > 12.5 && now - state.lastStepTime > 320) {
+        state.lastStepTime = now;
+        state.stepCount++;
+        document.getElementById("currentStepCount").innerText = state.stepCount;
+
+        if (state.stepCount >= state.stepsPerRound) {
+          state.stepCount = 0;
+          completeOneRound();
+        }
+      }
+    }
+
+    // --- Timer Engine ---
+    function startWalkTimer() {
+      state.startTime = Date.now();
+      state.lapStartTime = Date.now();
+      state.timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+        const hrs = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+        const secs = String(elapsed % 60).padStart(2, '0');
+        document.getElementById("sessionTimerText").innerText = `${hrs}:${mins}:${secs}`;
+      }, 1000);
+    }
+
+    // --- Tab Switching ---
+    function switchTab(tab) {
+      document.getElementById("counterTabView").classList.toggle("hidden", tab !== 'counter');
+      document.getElementById("gpsTabView").classList.toggle("hidden", tab !== 'gps');
+      document.getElementById("historyTabView").classList.toggle("hidden", tab !== 'history');
+
+      document.getElementById("tabBtnCounter").className = tab === 'counter' ? "flex flex-col items-center text-amber-400" : "flex flex-col items-center text-stone-500 hover:text-amber-300";
+      document.getElementById("tabBtnGps").className = tab === 'gps' ? "flex flex-col items-center text-amber-400" : "flex flex-col items-center text-stone-500 hover:text-amber-300";
+      document.getElementById("tabBtnHistory").className = tab === 'history' ? "flex flex-col items-center text-amber-400" : "flex flex-col items-center text-stone-500 hover:text-amber-300";
+
+      if (tab === 'history') renderHistoryList();
+    }
+
+    // --- Custom Target Modal ---
+    function openCustomTargetModal() {
+      document.getElementById("customModal").classList.remove("hidden");
+    }
+
+    function closeCustomTargetModal() {
+      document.getElementById("customModal").classList.add("hidden");
+    }
+
+    function saveCustomTarget() {
+      const shrineName = document.getElementById("inputShrineName").value.trim();
+      const rounds = parseInt(document.getElementById("inputTargetRounds").value, 10);
+      if (shrineName) state.shrine = shrineName;
+      if (rounds > 0) state.target = rounds;
+      closeCustomTargetModal();
+      renderUI();
+    }
+
+    // --- Journal & Storage ---
+    function saveParikramaSession() {
+      if (state.rounds === 0) {
+        alert("Complete at least 1 round before saving.");
+        return;
+      }
+
+      const session = {
+        id: Date.now(),
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        shrine: state.shrine,
+        rounds: state.rounds,
+        target: state.target,
+        duration: document.getElementById("sessionTimerText").innerText
+      };
+
+      state.history.unshift(session);
+      localStorage.setItem("parikrama_sessions", JSON.stringify(state.history));
+      alert(`Parikrama session saved: ${state.rounds} rounds at ${state.shrine}!`);
+      resetCurrentParikrama();
+      switchTab('history');
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById("historyListContainer");
+      container.innerHTML = "";
+
+      let totalRounds = 0;
+      state.history.forEach(s => totalRounds += s.rounds);
+      document.getElementById("totalLifetimeRounds").innerText = totalRounds;
+
+      if (state.history.length === 0) {
+        container.innerHTML = `<p class="text-xs text-stone-500 text-center py-6">No circumambulation logs recorded yet.</p>`;
+        return;
+      }
+
+      state.history.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "bg-stone-900 border border-stone-800 rounded-xl p-3 flex justify-between items-center text-xs";
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-amber-300">${item.shrine}</div>
+            <div class="text-[10px] text-stone-500">${item.date} • ${item.time} (${item.duration})</div>
+          </div>
+          <div class="text-right">
+            <span class="text-base font-extrabold text-amber-400">${item.rounds}</span>
+            <span class="text-[10px] text-stone-500 block">/ ${item.target} rds</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function exportHistoryCsv() {
+      if (state.history.length === 0) {
+        alert("No history to export.");
+        return;
+      }
+
+      let csv = "ID,Date,Time,Shrine,RoundsCompleted,TargetRounds,Duration\n";
+      state.history.forEach(h => {
+        csv += `${h.id},"${h.date}","${h.time}","${h.shrine}",${h.rounds},${h.target},"${h.duration}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `parikrama_journal_${Date.now()}.csv`;
+      a.click();
+    }
+
+    // --- UI Render Synchronizer ---
+    function renderUI() {
+      // Counter & Target
+      document.getElementById("roundCounterNumber").innerText = state.rounds;
+      document.getElementById("targetRoundsDisplay").innerText = state.target;
+      document.getElementById("headerShrineText").innerText = state.shrine;
+
+      // Progress Ring
+      const progressPercent = Math.min(state.rounds / state.target, 1);
+      const offset = TOTAL_RING_CIRCUMFERENCE - (progressPercent * TOTAL_RING_CIRCUMFERENCE);
+      document.getElementById("progressRing").style.strokeDashoffset = offset;
+
+      // Last lap pace
+      if (state.lastLapDuration) {
+        const m = String(Math.floor(state.lastLapDuration / 60)).padStart(2, '0');
+        const s = String(state.lastLapDuration % 60).padStart(2, '0');
+        document.getElementById("lastLapPaceText").innerText = `${m}:${s}`;
+      }
+
+      // Gate Badge
+      const gateBadge = document.getElementById("headerGateBadge");
+      if (state.gateCoords) {
+        gateBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span> Active`;
+        gateBadge.className = "inline-flex items-center text-[11px] font-semibold text-emerald-400";
+      } else {
+        gateBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-stone-500 mr-1"></span> Idle`;
+        gateBadge.className = "inline-flex items-center text-[11px] font-semibold text-stone-500";
+      }
+    }
+
+    function updateGpsStatusUI() {
+      if (!state.currentCoords) return;
+      document.getElementById("gpsStatusPill").innerText = "Locked";
+      document.getElementById("gpsStatusPill").className = "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 border border-emerald-600/40 text-emerald-300";
+      document.getElementById("accuracyValText").innerText = `± ${state.currentCoords.accuracy} meters`;
+      document.getElementById("coordsValText").innerText = `${state.currentCoords.lat.toFixed(5)}, ${state.currentCoords.lon.toFixed(5)}`;
+    }
+
+    // --- Sensitivity Sliders Listener ---
+    document.getElementById("triggerRadiusInput")?.addEventListener("input", (e) => {
+      state.triggerRadius = parseInt(e.target.value, 10);
+      document.getElementById("triggerRadiusVal").innerText = `${state.triggerRadius} m`;
+    });
+    document.getElementById("armDistanceInput")?.addEventListener("input", (e) => {
+      state.armDistance = parseInt(e.target.value, 10);
+      document.getElementById("armDistanceVal").innerText = `${state.armDistance} m`;
+    });
+
+    // --- PWA Service Worker Registration ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    // --- Onload Init ---
+    window.addEventListener("DOMContentLoaded", () => {
+      const saved = localStorage.getItem("parikrama_sessions");
+      if (saved) {
+        try { state.history = JSON.parse(saved); } catch (e) {}
+      }
+      initGpsTracking();
+      renderUI();
+    });
+  </script>
+</body>
+</html>
